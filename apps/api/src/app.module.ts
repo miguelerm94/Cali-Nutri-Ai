@@ -32,6 +32,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { HealthSyncModule } from './modules/health-sync/health-sync.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -53,8 +54,8 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
  *
  * Módulos de dominio: Auth, Sync (S1) + Assessment (S2) + Training completo (S3) +
  * Nutrition completo (S4) + Hidratación/Dashboard (S5a) + AI/CALI (S5b) +
- * Subscriptions/RevenueCat (S6a). El resto (Users, Body, HealthSync,
- * Notifications, Analytics) se añaden en S6a-S6b según FD-INFRA-01.
+ * Subscriptions/HealthSync/Notifications (S6a). El resto (Users, Body,
+ * Analytics) se añaden en S6b según FD-INFRA-01.
  */
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
     AiModule,
     SubscriptionsModule,
     HealthSyncModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
