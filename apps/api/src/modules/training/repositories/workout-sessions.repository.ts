@@ -26,7 +26,10 @@ export class WorkoutSessionsRepository {
   findById(id: string) {
     return this.prisma.workoutSession.findUnique({
       where: { id },
-      include: { workoutLogs: { include: { exercise: true }, orderBy: { createdAt: 'asc' } }, workoutDay: true },
+      include: {
+        workoutLogs: { include: { exercise: true }, orderBy: { createdAt: 'asc' } },
+        workoutDay: { include: { workoutExercises: true } },
+      },
     });
   }
 
