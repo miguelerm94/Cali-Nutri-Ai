@@ -56,4 +56,19 @@ export class TrainingProgramsRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  findById(id: string) {
+    return this.prisma.trainingProgram.findUnique({
+      where: { id },
+      include: { workoutDays: { include: { workoutExercises: true }, orderBy: { dayOrder: 'asc' } } },
+    });
+  }
+
+  /** FD-02: detección pasiva — solo persiste el flag informativo, sin acción automática. */
+  setStagnationAlert(id: string, alert: boolean, detectedAt: Date | null) {
+    return this.prisma.trainingProgram.update({
+      where: { id },
+      data: { stagnationAlert: alert, stagnationDetectedAt: detectedAt },
+    });
+  }
 }
