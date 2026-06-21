@@ -1,0 +1,1130 @@
+# CALI-NUTRI AI — schema.prisma
+
+**Clasificación:** Documento Técnico Interno  
+**Versión:** 2.0.0  
+**Fuente canónica:** FinalDecisions.md v1.0 · Auditoría DB v1.0  
+**Motor:** PostgreSQL 15+ (Supabase)  
+**ORM:** Prisma 5.x  
+**Autor:** Arquitectura Principal — CALI-NUTRI AI  
+**Estado:** ✅ APROBADO — Correcciones FIX-01 a FIX-08 aplicadas
+
+-----
+
+## Decisiones Arquitectónicas Incorporadas
+
+|Decisión      |Descripción                                                                                                                     |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------|
+|**FD-DB-01**  |`users`: eliminados `goal`, `current_weight_kg`, `experience_level`, `subscription_id`. Relación 1:1 via `subscriptions.user_id`|
+|**FD-DB-02**  |`water_targets`: tabla eliminada. Target calculado en runtime (`peso_kg × 40`). Cache Redis TTL 6h                              |
+|**FD-DB-03**  |`daily_summary`: tabla eliminada → Vista Materializada. Dashboard hoy = tablas fuente. Analítica histórica = MV                 |
+|**FD-DB-04**  |`food_diary`: desnormalización de macros INTENCIONAL Y PERMANENTE. Protege historial ante actualizaciones USDA                  |
+|**FD-DB-05**  |`user_assessments`: tabla nueva. `fitness_score` continuo 0–100 por movimiento                                                  |
+|**FD-DB-06**  |`ai_messages.content`: encriptado AES-256-GCM. Clave en AWS KMS                                                                 |
+|**FD-DB-07**  |`ai_messages`: campos `content_iv`, `tokens_used`, `tool_calls` (JSONB), `latency_ms`                                           |
+|**FD-DB-08**  |`subscriptions`: tabla nueva para RevenueCat                                                                                    |
+|**FD-DB-09**  |`sync_queue_items`: tabla nueva para modo offline                                                                               |
+|**FD-DB-10**  |`notification_logs`: tabla nueva para deep linking. UPDATE via `service_role` exclusivamente                                    |
+|**FD-SEC-01** |`users.deleted_at`: soft delete GDPR. Hard delete a 30 días via BullMQ                                                          |
+|**FD-ARCH-01**|Supabase Auth = único emisor JWT (RS256). RLS = segunda línea de defensa                                                        |
+
+-----
+
+## Correcciones Aplicadas — Auditoría DB v1.0
+
+|Fix       |Descripción                                                                                                                                                                      |
+|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**FIX-01**|`@@index([onboardingComplete])` renombrado a `idx_users_onboarding_status`. El índice parcial `idx_users_onboarding_incomplete` vive en `01_materialized_views.sql` sin conflicto|
+
+-----
+
+## Inventario de Tablas
+
+### Tablas activas v1.0
+
+|Tabla              |Estado                |
+|-------------------|----------------------|
+|`users`            |Core                  |
+|`user_assessments` |Nueva (post-auditoría)|
+|`body_measurements`|Core                  |
+|`goals`            |Core                  |
+|`training_programs`|Core                  |
+|`workout_days`     |Core                  |
+|`exercises`        |Catálogo              |
+|`workout_exercises`|Core                  |
+|`workout_sessions` |Core                  |
+|`workout_logs`     |Core                  |
+|`foods`            |Catálogo              |
+|`food_diary`       |Core                  |
+|`water_logs`       |Core                  |
+|`health_data`      |Core                  |
+|`ai_conversations` |Core                  |
+|`ai_messages`      |Core                  |
+|`subscriptions`    |Nueva (post-auditoría)|
+|`notification_logs`|Nueva (post-auditoría)|
+|`sync_queue_items` |Nueva (post-auditoría)|
+
+### Tablas eliminadas
+
+|Tabla               |Decisión                          |
+|--------------------|----------------------------------|
+|`water_targets`     |FD-DB-02: calcular en runtime     |
+|`daily_summary`     |FD-DB-03: reemplazada por MV      |
+|`recipes`           |Diferida a v2.0                   |
+|`recipe_ingredients`|Diferida a v2.0                   |
+|`achievements`      |Diferida a v2.0; streak en `users`|
+
+### Vista materializada
+
+|Vista             |Estado                            |
+|------------------|----------------------------------|
+|`daily_summary_mv`|DDL en `01_materialized_views.sql`|
+
+### Constraints adicionales (raw SQL)
+
+|Archivo                    |Contenido                                                          |
+|---------------------------|-------------------------------------------------------------------|
+|`01_materialized_views.sql`|MV, índices parciales, `UNIQUE PARTIAL INDEX`, `get_user_profile()`|
+|`02_rls_policies.sql`      |Políticas RLS incluyendo MV                                        |
+|`03_check_constraints.sql` |47 `CHECK` constraints                                             |
+
+-----
+
+## Schema Prisma Completo
+
+```prisma
+// =============================================================================
+// CALI-NUTRI AI — schema.prisma
+// =============================================================================
+// Versión:          2.0.0
+// Fuente canónica:  FinalDecisions.md v1.0 (Junio 2026)
+// Motor:            PostgreSQL 15+ (Supabase)
+// ORM:              Prisma 5.x
+// Autor:            Arquitectura Principal — CALI-NUTRI AI
+// Correcciones:     Auditoría DB v1.0 — Junio 2026
+// =============================================================================
+//
+// CORRECCIONES APLICADAS (Auditoría DB v1.0):
+//
+//  FIX-01 · Conflicto de nombre de índice resuelto:
+//             ANTES: @@index([onboardingComplete], map: "idx_users_onboarding_incomplete")
+//             AHORA: @@index([onboardingComplete], map: "idx_users_onboarding_status")
+//             El índice parcial "idx_users_onboarding_incomplete" queda en 01_materialized_views.sql
+//             (WHERE onboarding_complete = FALSE) sin conflicto de nombres.
+//
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions", "views", "typedSql"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  // directUrl usado por Prisma Migrate (sin connection pooling — requerido por Supabase)
+  directUrl  = env("DIRECT_URL")
+  extensions = [
+    pgcrypto(schema: "extensions"),  // gen_random_uuid()
+    pg_trgm(schema: "extensions"),   // Búsqueda fuzzy de alimentos (GIN trigram)
+    unaccent(schema: "extensions")   // Búsqueda sin acentos (español)
+  ]
+}
+
+// =============================================================================
+// ─── ENUMERACIONES ────────────────────────────────────────────────────────────
+// =============================================================================
+
+/// Sexo biológico — usado en fórmula Mifflin-St Jeor (FD-05)
+/// Hombre: TMB = (10×peso) + (6.25×altura) - (5×edad) + 5
+/// Mujer:  TMB = (10×peso) + (6.25×altura) - (5×edad) - 161
+enum Sex {
+  male
+  female
+  @@map("sex")
+}
+
+/// Preferencia de unidades del usuario — persiste entre sesiones
+/// Criterio de lanzamiento (FD-Sección-12): debe aplicarse en todos los módulos
+enum UnitPreference {
+  metric   // kg, cm
+  imperial // lbs, ft/in
+  @@map("unit_preference")
+}
+
+/// Tier de suscripción del usuario
+/// FD-Sección-10: Tabla oficial de límites free vs premium
+/// Sincronizado con RevenueCat via webhook en < 30 segundos tras pago
+enum UserTier {
+  free
+  premium
+  @@map("user_tier")
+}
+
+/// Tipos de objetivo nutricional y físico
+/// FD-06: Ajustes calóricos canónicos sobre TDEE:
+///   muscle_gain:   TDEE + 300 kcal (rango: +200 a +400)
+///   fat_loss:      TDEE - 400 kcal (rango: -300 a -600)
+///   recomposition: TDEE - 150 kcal (rango: -100 a -250)
+///   maintenance:   TDEE exacto
+enum GoalType {
+  muscle_gain
+  fat_loss
+  recomposition
+  maintenance
+  @@map("goal_type")
+}
+
+/// Estado del ciclo de vida de un objetivo
+enum GoalStatus {
+  active
+  completed
+  cancelled
+  @@map("goal_status")
+}
+
+/// Estado del ciclo de vida de un programa de entrenamiento
+enum TrainingProgramStatus {
+  active
+  completed
+  cancelled
+  @@map("training_program_status")
+}
+
+/// Estructura de entrenamiento semanal
+/// FD-03: Tabla canónica de frecuencias y estructuras
+///   full_body       → 3 días/semana (Principiante e Intermedio)
+///   upper_lower     → 4 días/semana (Intermedio y Avanzado)
+///   push_pull_legs  → 5 días/semana (Avanzado)
+///   ppl_double      → 6 días/semana (Avanzado con score ≥ 80)
+enum TrainingStructure {
+  full_body
+  upper_lower
+  push_pull_legs
+  ppl_double
+  @@map("training_structure")
+}
+
+/// Tipo de día de entrenamiento dentro de una estructura
+enum WorkoutDayType {
+  full_body_a     // Full Body rotación A
+  full_body_b     // Full Body rotación B
+  upper
+  lower
+  push
+  pull
+  legs
+  complementary
+  @@map("workout_day_type")
+}
+
+/// Categoría biomecánica del ejercicio (clasificación de calistenia)
+enum ExerciseCategory {
+  push      // Flexiones, fondos, press
+  pull      // Dominadas, remos, curls
+  squat     // Sentadillas, pistol squat
+  hinge     // Hip hinge, nordic curl
+  core      // Plancha, hollow body, L-sit
+  carry     // Farmer carry, loaded movement
+  @@map("exercise_category")
+}
+
+/// Grupos musculares principales
+enum MuscleGroup {
+  chest
+  back
+  shoulders
+  biceps
+  triceps
+  core
+  glutes
+  quads
+  hamstrings
+  calves
+  full_body
+  @@map("muscle_group")
+}
+
+/// Tipo de comida para el diario nutricional
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+  pre_workout
+  post_workout
+  @@map("meal_type")
+}
+
+/// Fuente de los datos del alimento
+/// FD-Sección-9: foods.source requerido para trazabilidad
+enum FoodSource {
+  usda         // API de USDA FoodData Central
+  local        // Base curada local (500 alimentos — fallback USDA caída)
+  user_custom  // Creado por el usuario (v2.0 scope — campo reservado)
+  @@map("food_source")
+}
+
+/// Rol del mensaje en la conversación con CALI
+enum AiRole {
+  user
+  assistant
+  system
+  @@map("ai_role")
+}
+
+/// Plataforma de salud integrada
+/// FD-08: Datos importados en v1.0: pasos, peso, sueño
+/// FD-ARCH-06: Sync asíncrono via BullMQ — nunca síncrono al abrir app
+enum HealthPlatform {
+  healthkit       // Apple Health (iOS)
+  health_connect  // Google Health Connect (Android)
+  @@map("health_platform")
+}
+
+/// Tipo de notificación push
+/// FD-DB-10: Requerido para deep linking
+enum NotificationType {
+  workout_reminder
+  hydration_alert
+  streak_reminder
+  nutrition_reminder
+  stagnation_alert   // FD-02: alerta informativa de estancamiento
+  premium_upsell
+  @@map("notification_type")
+}
+
+/// Estado de la suscripción RevenueCat
+/// FD-DB-08: Sincronizado via webhook
+enum SubscriptionStatus {
+  trial      // Trial gratuito 7 días (FD-Sección-10)
+  active
+  expired
+  cancelled
+  paused
+  @@map("subscription_status")
+}
+
+/// Plan de suscripción Premium
+/// FD-Sección-10: $9.99/mes | $59.99/año
+enum SubscriptionPlan {
+  premium_monthly  // $9.99 USD/mes
+  premium_annual   // $59.99 USD/año ($4.99/mes efectivo)
+  @@map("subscription_plan")
+}
+
+/// Operaciones soportadas en modo offline
+/// FD-DB-09: Lista canónica de operaciones offline
+enum SyncOperation {
+  create
+  update
+  delete
+  @@map("sync_operation")
+}
+
+/// Endpoints que soportan operaciones offline
+/// FD-DB-09: Operaciones que SÍ soportan offline
+enum SyncEndpoint {
+  workout_sessions
+  workout_logs
+  food_diary
+  water_logs
+  @@map("sync_endpoint")
+}
+
+/// Estado de sincronización de un item en la cola offline
+enum SyncStatus {
+  pending
+  processing
+  synced
+  failed
+  @@map("sync_status")
+}
+
+/// Nivel de presentación para la UI del usuario
+/// FD-01: Nivel DERIVADO en runtime desde global_score.
+/// Umbral de mapeo:
+///   0–54   → beginner
+///   55–74  → intermediate
+///   75–100 → advanced
+/// NUNCA usado como fuente de verdad de nivel; solo para snapshot histórico
+enum PresentationLevel {
+  beginner
+  intermediate
+  advanced
+  @@map("presentation_level")
+}
+
+// =============================================================================
+// ─── MODELO: USERS ────────────────────────────────────────────────────────────
+// =============================================================================
+
+/// Usuario principal de la plataforma.
+///
+/// CAMPOS ELIMINADOS POR FD-DB-01:
+///   - goal (VARCHAR)             → ver tabla goals, status = 'active'
+///   - current_weight_kg          → ver body_measurements, MAX(created_at)
+///   - experience_level (VARCHAR) → derivado en runtime desde user_assessments.global_score
+///   - subscription_id (VARCHAR)  → relación 1:1 via subscriptions.user_id
+///
+/// CAMPO NUEVO: onboarding_step — State machine (FD-ARCH-07)
+///   Pasos: 0=inicio, 1=nombre, 2=nacimiento+sexo, 3=biométricos+unidades,
+///          4=objetivo, 5=frecuencia, 6=evaluación, 7=completado
+///
+/// SOFT DELETE: deleted_at (FD-SEC-01 GDPR)
+///   Hard delete en cascada a los 30 días via BullMQ job.
+///
+/// CHECK CONSTRAINTS (prisma/sql/03_check_constraints.sql — FIX-05):
+///   training_frequency BETWEEN 0 AND 7
+///   onboarding_step    BETWEEN 0 AND 7
+///   streak_days        >= 0
+///
+/// RLS POLICY (ver prisma/sql/02_rls_policies.sql):
+///   SELECT: id = auth.uid() AND deleted_at IS NULL
+///   UPDATE: id = auth.uid() AND deleted_at IS NULL
+///   INSERT: service_role exclusivamente (registro)
+model User {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String         @unique @db.VarChar(255)
+  passwordHash       String?        @map("password_hash") @db.VarChar(255)
+  firstName          String         @map("first_name") @db.VarChar(100)
+  lastName           String?        @map("last_name") @db.VarChar(100)
+
+  birthDate          DateTime       @map("birth_date") @db.Date
+  sex                Sex
+  heightCm           Int            @map("height_cm")
+  targetWeightKg     Decimal?       @map("target_weight_kg") @db.Decimal(5, 2)
+
+  /// FD-05: Factor TDEE derivado en runtime. CHECK (0–7) en 03_check_constraints.sql
+  trainingFrequency  Int            @default(3) @map("training_frequency")
+  unitPreference     UnitPreference @default(metric) @map("unit_preference")
+
+  /// FD-ARCH-07: State machine. CHECK (0–7) en 03_check_constraints.sql
+  onboardingStep     Int            @default(0) @map("onboarding_step")
+  onboardingComplete Boolean        @default(false) @map("onboarding_complete")
+
+  /// Sincronizado con RevenueCat via webhook en < 30s (FD-Sección-10)
+  tier               UserTier       @default(free)
+
+  /// CHECK (streak_days >= 0) en 03_check_constraints.sql
+  streakDays         Int            @default(0) @map("streak_days")
+  lastActiveDate     DateTime?      @map("last_active_date") @db.Date
+
+  googleId           String?        @unique @map("google_id") @db.VarChar(255)
+  avatarUrl          String?        @map("avatar_url") @db.VarChar(512)
+
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  /// FD-SEC-01 GDPR: período de gracia 30 días. Hard delete via BullMQ.
+  deletedAt          DateTime?      @map("deleted_at") @db.Timestamptz
+
+  bodyMeasurements   BodyMeasurement[]
+  goals              Goal[]
+  trainingPrograms   TrainingProgram[]
+  workoutSessions    WorkoutSession[]
+  foodDiaryEntries   FoodDiaryEntry[]
+  waterLogs          WaterLog[]
+  healthData         HealthData[]
+  aiConversations    AiConversation[]
+  userAssessments    UserAssessment[]
+  subscription       Subscription?
+  notificationLogs   NotificationLog[]
+  syncQueueItems     SyncQueueItem[]
+
+  @@index([email])
+  @@index([googleId])
+  @@index([tier])
+  @@index([deletedAt])
+  /// FIX-01: "idx_users_onboarding_status" — nombre distinto al índice PARCIAL
+  /// "idx_users_onboarding_incomplete" de 01_materialized_views.sql. Sin conflicto.
+  @@index([onboardingComplete], map: "idx_users_onboarding_status")
+  @@map("users")
+}
+
+// =============================================================================
+// ─── MODELO: USER_ASSESSMENTS ─────────────────────────────────────────────────
+// =============================================================================
+
+/// Evaluación de movimientos del usuario. NUEVA tabla (FD-DB-05 / FD-01).
+///
+/// FD-01: Repeticiones brutas → backend calcula fitness_score (0–100).
+/// Nivel de presentación DERIVADO en runtime desde global_score.
+///
+/// Pesos del score global:
+///   Dominadas 40% + Flexiones 30% + Sentadillas 15% + Core 15%
+///
+/// UNIQUE PARTIAL INDEX (FIX-04 — 01_materialized_views.sql):
+///   idx_user_assessments_one_active_per_user
+///   ON user_assessments (user_id) WHERE is_active = TRUE
+///
+/// CHECK CONSTRAINTS (FIX-05 — 03_check_constraints.sql):
+///   global_score, pullups/pushups/squats/core_score BETWEEN 0 AND 100
+///
+/// RLS POLICY: USING (user_id = auth.uid())
+model UserAssessment {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  assessedAt        DateTime          @default(now()) @map("assessed_at") @db.Timestamptz
+
+  pullupsMax        Int               @default(0) @map("pullups_max")
+  pushupsMax        Int               @default(0) @map("pushups_max")
+  squatsMax         Int               @default(0) @map("squats_max")
+  dipsMax           Int               @default(0) @map("dips_max")
+  plankSeconds      Int               @default(0) @map("plank_seconds")
+
+  /// CHECK (0–100) en 03_check_constraints.sql
+  pullupsScore      Decimal           @default(0) @map("pullups_score") @db.Decimal(5, 2)
+  pushupsScore      Decimal           @default(0) @map("pushups_score") @db.Decimal(5, 2)
+  squatsScore       Decimal           @default(0) @map("squats_score") @db.Decimal(5, 2)
+  coreScore         Decimal           @default(0) @map("core_score") @db.Decimal(5, 2)
+
+  /// global_score = (pullups*0.40) + (pushups*0.30) + (squats*0.15) + (core*0.15)
+  /// CHECK (0–100) en 03_check_constraints.sql
+  globalScore       Decimal           @default(0) @map("global_score") @db.Decimal(5, 2)
+
+  /// Snapshot histórico. Fuente de verdad del nivel = runtime desde globalScore.
+  presentationLevel PresentationLevel @default(beginner) @map("presentation_level")
+
+  /// Solo 1 isActive=TRUE por usuario.
+  /// Garantizado por idx_user_assessments_one_active_per_user (FIX-04)
+  isActive          Boolean           @default(true) @map("is_active")
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, assessedAt(sort: Desc)])
+  @@map("user_assessments")
+}
+
+// =============================================================================
+// ─── MODELO: BODY_MEASUREMENTS ────────────────────────────────────────────────
+// =============================================================================
+
+/// Histórico de medidas corporales. FUENTE CANÓNICA del peso actual (FD-DB-01).
+///   Peso actual = ORDER BY created_at DESC LIMIT 1
+///   Centralizado en get_user_profile() con CTEs (FIX-06)
+///
+/// CHECK CONSTRAINTS (FIX-05): weight_kg > 0, body_fat_percent BETWEEN 3 AND 70
+/// RLS POLICY: USING (user_id = auth.uid())
+model BodyMeasurement {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+
+  weightKg        Decimal?  @map("weight_kg") @db.Decimal(5, 2)
+  waistCm         Decimal?  @map("waist_cm") @db.Decimal(5, 2)
+  neckCm          Decimal?  @map("neck_cm") @db.Decimal(5, 2)
+  hipCm           Decimal?  @map("hip_cm") @db.Decimal(5, 2)
+  bodyFatPercent  Decimal?  @map("body_fat_percent") @db.Decimal(5, 2)
+  leanMassKg      Decimal?  @map("lean_mass_kg") @db.Decimal(5, 2)
+  bmi             Decimal?  @db.Decimal(5, 2)
+  source          String?   @db.VarChar(50) // 'manual' | 'healthkit' | 'health_connect'
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("body_measurements")
+}
+
+// =============================================================================
+// ─── MODELO: GOALS ────────────────────────────────────────────────────────────
+// =============================================================================
+
+/// Objetivos del usuario. Reemplaza users.goal (FD-DB-01).
+///   Objetivo activo = WHERE user_id=? AND status='active' LIMIT 1
+///
+/// UNIQUE PARTIAL INDEX (FIX-04):
+///   idx_goals_one_active_per_user ON goals(user_id) WHERE status='active'
+///   → Garantía DB de 1 solo goal activo por usuario
+///
+/// CHECK CONSTRAINTS (FIX-05): target_calories, tdee BETWEEN 500 AND 10000
+/// RLS POLICY: USING (user_id = auth.uid())
+model Goal {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String      @map("user_id") @db.Uuid
+
+  goalType        GoalType    @map("goal_type")
+  startDate       DateTime    @map("start_date") @db.Date
+  targetDate      DateTime?   @map("target_date") @db.Date
+  targetWeightKg  Decimal?    @map("target_weight_kg") @db.Decimal(5, 2)
+  status          GoalStatus  @default(active)
+
+  /// TDEE ± ajuste calórico según FD-06
+  targetCalories  Int?        @map("target_calories")
+  /// FD-06: Proteína 2.0 g/kg por defecto (rango 1.8–2.4 g/kg)
+  targetProteinG  Decimal?    @map("target_protein_g") @db.Decimal(6, 2)
+  /// FD-06: Carbohidratos = calorías residuales
+  targetCarbsG    Decimal?    @map("target_carbs_g") @db.Decimal(6, 2)
+  /// FD-06: Grasas 0.8–1.0 g/kg (mínimo 0.6 g/kg)
+  targetFatG      Decimal?    @map("target_fat_g") @db.Decimal(6, 2)
+  tdee            Int?
+
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainingPrograms TrainingProgram[]
+
+  @@index([userId])
+  @@index([userId, status], map: "idx_goals_user_status")
+  @@map("goals")
+}
+
+// =============================================================================
+// ─── MODELO: TRAINING_PROGRAMS ────────────────────────────────────────────────
+// =============================================================================
+
+/// Programas de entrenamiento generados por el motor de IA.
+///
+/// FD-02: Detección pasiva de estancamiento:
+///   stagnationAlert = TRUE → alerta informativa. Sin acción automática en v1.0.
+///
+/// FD-03: weeklyFrequency + structure → plantilla de días:
+///   3 días → full_body | 4 → upper_lower | 5 → push_pull_legs | 6 → ppl_double
+///
+/// Límite free: 1 programa activo. Premium: ilimitados. (FD-Sección-10)
+/// RLS POLICY: USING (user_id = auth.uid())
+model TrainingProgram {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String                @map("user_id") @db.Uuid
+  goalId               String?               @map("goal_id") @db.Uuid
+
+  name                 String                @db.VarChar(255)
+  weeklyFrequency      Int                   @map("weekly_frequency")
+  structure            TrainingStructure
+
+  startDate            DateTime              @map("start_date") @db.Date
+  endDate              DateTime?             @map("end_date") @db.Date
+  status               TrainingProgramStatus @default(active)
+
+  /// FD-02: Sin mejora 3 semanas consecutivas O reducción 2 semanas consecutivas
+  stagnationAlert      Boolean               @default(false) @map("stagnation_alert")
+  stagnationDetectedAt DateTime?             @map("stagnation_detected_at") @db.Timestamptz
+
+  generatedForLevel    PresentationLevel     @map("generated_for_level")
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal                 Goal?                 @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  workoutDays          WorkoutDay[]
+  workoutSessions      WorkoutSession[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("training_programs")
+}
+
+// =============================================================================
+// ─── MODELO: WORKOUT_DAYS ─────────────────────────────────────────────────────
+// =============================================================================
+
+/// Días programados dentro de un programa de entrenamiento.
+/// RLS: acceso indirecto via training_programs → user_id = auth.uid()
+model WorkoutDay {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  programId        String          @map("program_id") @db.Uuid
+  dayName          String          @map("day_name") @db.VarChar(100)
+  dayType          WorkoutDayType  @map("day_type")
+  dayOrder         Int             @map("day_order")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  program          TrainingProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  workoutExercises WorkoutExercise[]
+  workoutSessions  WorkoutSession[]
+
+  @@index([programId])
+  @@map("workout_days")
+}
+
+// =============================================================================
+// ─── MODELO: EXERCISES ────────────────────────────────────────────────────────
+// =============================================================================
+
+/// Catálogo maestro de ejercicios de calistenia.
+/// Árbol de progresiones via parentExerciseId (self-relation).
+/// Seed: 50+ ejercicios en prisma/seed/data/exercises.json
+///
+/// CHECK CONSTRAINTS (FIX-05): difficulty BETWEEN 1 AND 10
+/// RLS: FOR SELECT USING (authenticated AND is_active = TRUE)
+///      INSERT/UPDATE/DELETE → service_role exclusivamente
+model Exercise {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String           @db.VarChar(255)
+  nameEs           String?          @map("name_es") @db.VarChar(255)
+  category         ExerciseCategory
+  primaryMuscle    MuscleGroup      @map("primary_muscle")
+  secondaryMuscles MuscleGroup[]    @map("secondary_muscles")
+
+  /// CHECK (difficulty BETWEEN 1 AND 10) en 03_check_constraints.sql
+  difficulty       Int
+  description      String?          @db.Text
+  instructions     String?          @db.Text
+
+  /// NULL = ejercicio base de la cadena de progresiones
+  parentExerciseId String?          @map("parent_exercise_id") @db.Uuid
+
+  imageUrl         String?          @map("image_url") @db.VarChar(512)
+  videoUrl         String?          @map("video_url") @db.VarChar(512)
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  parentExercise   Exercise?        @relation("ExerciseProgressions", fields: [parentExerciseId], references: [id])
+  progressions     Exercise[]       @relation("ExerciseProgressions")
+  workoutExercises WorkoutExercise[]
+  workoutLogs      WorkoutLog[]
+
+  @@index([category])
+  @@index([primaryMuscle])
+  @@index([parentExerciseId])
+  @@index([isActive])
+  @@map("exercises")
+}
+
+// =============================================================================
+// ─── MODELO: WORKOUT_EXERCISES ────────────────────────────────────────────────
+// =============================================================================
+
+/// Prescripciones de ejercicio en días de entrenamiento.
+/// FD-04: repsTarget = floor(maxReps * 0.70). Sets = 4 default.
+/// RLS: acceso indirecto via workout_days → training_programs → user_id
+model WorkoutExercise {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workoutDayId   String    @map("workout_day_id") @db.Uuid
+  exerciseId     String    @map("exercise_id") @db.Uuid
+
+  exerciseOrder  Int       @map("exercise_order")
+  sets           Int       @default(4)
+  repsTarget     Int       @map("reps_target")
+  restSeconds    Int       @default(90) @map("rest_seconds")
+  targetRpe      Decimal?  @map("target_rpe") @db.Decimal(3, 1)
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  workoutDay     WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  /// RESTRICT: preserva historial del catálogo
+  exercise       Exercise   @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([workoutDayId])
+  @@index([exerciseId])
+  @@map("workout_exercises")
+}
+
+// =============================================================================
+// ─── MODELO: WORKOUT_SESSIONS ─────────────────────────────────────────────────
+// =============================================================================
+
+/// Entrenamientos ejecutados por el usuario.
+///
+/// FD-02: subjectiveFatigue (1–10) = señal conversacional para CALI.
+///         Sin efecto automático en v1.0.
+///
+/// CHECK CONSTRAINTS (FIX-05):
+///   subjective_fatigue BETWEEN 1 AND 10 | duration_minutes > 0
+///   finished_at >= started_at
+///
+/// RLS POLICY: USING (user_id = auth.uid())
+model WorkoutSession {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  programId        String?          @map("program_id") @db.Uuid
+  workoutDayId     String?          @map("workout_day_id") @db.Uuid
+
+  startedAt        DateTime         @map("started_at") @db.Timestamptz
+  finishedAt       DateTime?        @map("finished_at") @db.Timestamptz
+  durationMinutes  Int?             @map("duration_minutes")
+
+  /// FD-02: 1–10. CHECK en 03_check_constraints.sql
+  subjectiveFatigue Int?            @map("subjective_fatigue")
+  notes            String?          @db.Text
+  isOfflineSync    Boolean          @default(false) @map("is_offline_sync")
+
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program          TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  workoutDay       WorkoutDay?      @relation(fields: [workoutDayId], references: [id], onDelete: SetNull)
+  workoutLogs      WorkoutLog[]
+
+  @@index([userId])
+  @@index([userId, startedAt(sort: Desc)], map: "idx_workout_sessions_recent")
+  @@index([programId])
+  @@map("workout_sessions")
+}
+
+// =============================================================================
+// ─── MODELO: WORKOUT_LOGS ─────────────────────────────────────────────────────
+// =============================================================================
+
+/// Registro granular por serie. ProgressionEngine evalúa estos datos (FD-04).
+/// Records personales = calculados en runtime (no almacenados).
+///
+/// CHECK CONSTRAINTS (FIX-05): rpe BETWEEN 1 AND 10, set_number >= 1, reps_completed >= 0
+/// RLS: acceso indirecto via workout_sessions → user_id = auth.uid()
+model WorkoutLog {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId      String        @map("session_id") @db.Uuid
+  exerciseId     String        @map("exercise_id") @db.Uuid
+
+  setNumber      Int           @map("set_number")
+  repsCompleted  Int           @map("reps_completed")
+  /// RPE 1–10. CHECK en 03_check_constraints.sql
+  rpe            Int?
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  session        WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// RESTRICT: preserva historial del catálogo
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId])
+  @@index([exerciseId])
+  @@map("workout_logs")
+}
+
+// =============================================================================
+// ─── MODELO: FOODS ────────────────────────────────────────────────────────────
+// =============================================================================
+
+/// Base de datos nutricional global. Fuentes: USDA + base local 500 alimentos.
+/// Búsqueda fuzzy < 500ms via GIN pg_trgm (definido en 01_materialized_views.sql).
+///
+/// NOTA: UNIQUE(source, externalId) permite múltiples NULLs (items locales sin ID).
+/// RLS: FOR SELECT USING (authenticated AND is_active = TRUE)
+model Food {
+  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String     @db.VarChar(500)
+  nameEs             String?    @map("name_es") @db.VarChar(500)
+  source             FoodSource @default(usda)
+  externalId         String?    @map("external_id") @db.VarChar(100)
+  brand              String?    @db.VarChar(255)
+
+  servingSizeG       Decimal    @map("serving_size_g") @db.Decimal(8, 2)
+  servingDescription String?    @map("serving_description") @db.VarChar(255)
+  calories           Decimal    @db.Decimal(8, 2)
+  proteinG           Decimal    @map("protein_g") @db.Decimal(8, 2)
+  carbsG             Decimal    @map("carbs_g") @db.Decimal(8, 2)
+  fatG               Decimal    @map("fat_g") @db.Decimal(8, 2)
+  fiberG             Decimal?   @map("fiber_g") @db.Decimal(8, 2)
+  sugarG             Decimal?   @map("sugar_g") @db.Decimal(8, 2)
+  sodiumMg           Decimal?   @map("sodium_mg") @db.Decimal(8, 2)
+
+  isVerified         Boolean    @default(false) @map("is_verified")
+  isActive           Boolean    @default(true) @map("is_active")
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  foodDiaryEntries   FoodDiaryEntry[]
+
+  @@unique([source, externalId], map: "uniq_foods_source_external_id")
+  @@index([name], map: "idx_foods_name")
+  @@index([source])
+  @@index([isVerified, isActive], map: "idx_foods_verified_active")
+  @@map("foods")
+}
+
+// =============================================================================
+// ─── MODELO: FOOD_DIARY_ENTRY ─────────────────────────────────────────────────
+// =============================================================================
+
+/// Diario nutricional del usuario.
+///
+/// ⚠️  DESNORMALIZACIÓN INTENCIONAL (FD-DB-04):
+///   calories, protein_g, carbs_g, fat_g = snapshot al momento del registro.
+///   Fórmula: (food.campo / food.serving_size_g) × quantity_g
+///   NUNCA recalcular desde foods.* para registros históricos — es un BUG.
+///   Protege el historial ante actualizaciones de la base USDA.
+///
+/// RLS POLICY: USING (user_id = auth.uid())
+model FoodDiaryEntry {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  foodId        String    @map("food_id") @db.Uuid
+
+  quantityG     Decimal   @map("quantity_g") @db.Decimal(8, 2)
+  mealType      MealType  @map("meal_type")
+
+  calories      Decimal   @db.Decimal(8, 2)
+  proteinG      Decimal   @map("protein_g") @db.Decimal(8, 2)
+  carbsG        Decimal   @map("carbs_g") @db.Decimal(8, 2)
+  fatG          Decimal   @map("fat_g") @db.Decimal(8, 2)
+
+  consumedAt    DateTime  @map("consumed_at") @db.Timestamptz
+  isOfflineSync Boolean   @default(false) @map("is_offline_sync")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food          Food      @relation(fields: [foodId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([userId, consumedAt(sort: Desc)], map: "idx_food_diary_date")
+  @@index([userId, mealType])
+  @@map("food_diary")
+}
+
+// =============================================================================
+// ─── MODELO: WATER_LOGS ───────────────────────────────────────────────────────
+// =============================================================================
+
+/// Registro de ingesta de agua. water_targets eliminada (FD-DB-02).
+/// Target calculado en runtime + cache Redis TTL 6h.
+/// FD-07: UI rápida 250|500|750|1000 ml. CHECK amount_ml > 0 (FIX-05).
+/// RLS POLICY: USING (user_id = auth.uid())
+model WaterLog {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  amountMl      Int       @map("amount_ml")
+  isOfflineSync Boolean   @default(false) @map("is_offline_sync")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("water_logs")
+}
+
+// =============================================================================
+// ─── MODELO: HEALTH_DATA ──────────────────────────────────────────────────────
+// =============================================================================
+
+/// Datos de Apple Health / Google Health Connect.
+/// FD-08: steps, weight_kg, sleep_minutes (v1.0). active_calories (v1.1). heart_rate (v2.0).
+/// FD-ARCH-06: Sync ASÍNCRONO via BullMQ.
+/// Deduplication: UNIQUE(userId, platform, dataDate) → upsert.
+/// RLS POLICY: USING (user_id = auth.uid())
+model HealthData {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  platform       HealthPlatform
+  dataDate       DateTime       @map("data_date") @db.Date
+
+  steps          Int?
+  weightKg       Decimal?       @map("weight_kg") @db.Decimal(5, 2)
+  sleepMinutes   Int?           @map("sleep_minutes")
+  activeCalories Decimal?       @map("active_calories") @db.Decimal(8, 2) // diferido v1.1
+
+  importedAt     DateTime       @default(now()) @map("imported_at") @db.Timestamptz
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform, dataDate], map: "uniq_health_data_user_platform_date")
+  @@index([userId])
+  @@index([userId, importedAt(sort: Desc)], map: "idx_health_data_date")
+  @@map("health_data")
+}
+
+// =============================================================================
+// ─── MODELO: AI_CONVERSATIONS ─────────────────────────────────────────────────
+// =============================================================================
+
+/// Conversaciones con CALI (coach IA).
+/// FD-ARCH-05: AIModule transversal con acceso a Training + Nutrition + Hydration.
+/// FD-ARCH-03: Ventana de contexto = últimos 20 mensajes por conversación.
+/// RLS POLICY: USING (user_id = auth.uid())
+model AiConversation {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  title     String?     @db.VarChar(255)
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+
+  @@index([userId])
+  @@index([userId, isActive, updatedAt(sort: Desc)])
+  @@map("ai_conversations")
+}
+
+// =============================================================================
+// ─── MODELO: AI_MESSAGES ──────────────────────────────────────────────────────
+// =============================================================================
+
+/// Mensajes de CALI.
+///
+/// ⚠️  FD-DB-06: content ENCRIPTADO AES-256-GCM (base64).
+///   Clave maestra en AWS KMS. Desencriptar SOLO via EncryptionService.decrypt().
+///   No es posible hacer full-text search sobre content.
+///
+/// FD-DB-07: content_iv, tokens_used, tool_calls (JSONB), latency_ms.
+/// FD-ARCH-04: Rate limit Redis — Free: 10/día | Premium: 100/día.
+/// RLS: acceso indirecto via ai_conversations → user_id = auth.uid()
+model AiMessage {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String         @map("conversation_id") @db.Uuid
+  role           AiRole
+
+  /// ENCRIPTADO AES-256-GCM. NO leer sin EncryptionService.decrypt()
+  content        String         @db.Text
+  contentIv      String         @map("content_iv") @db.VarChar(100)
+  tokensUsed     Int?           @map("tokens_used")
+
+  /// Tool calls: [{tool, args, result, status: 'success'|'partial_success'|'failed'}]
+  toolCalls      Json?          @map("tool_calls")
+
+  /// SLA: p50 < 3s, p95 < 6s (FD-ARCH-03)
+  latencyMs      Int?           @map("latency_ms")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@map("ai_messages")
+}
+
+// =============================================================================
+// ─── MODELO: SUBSCRIPTIONS ────────────────────────────────────────────────────
+// =============================================================================
+
+/// Suscripciones Premium — RevenueCat (FD-DB-08).
+/// 1 subscription por usuario (@@unique userId).
+/// subscription_id eliminado de users → relación via subscriptions.user_id.
+/// Planes: premium_monthly $9.99 | premium_annual $59.99 | trial 7 días.
+///
+/// RLS: SELECT → user_id = auth.uid()
+///      INSERT/UPDATE → service_role (webhook RevenueCat)
+model Subscription {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String              @unique @map("user_id") @db.Uuid
+  revenuecatUserId   String              @unique @map("revenuecat_user_id") @db.VarChar(255)
+
+  planId             SubscriptionPlan?   @map("plan_id")
+  status             SubscriptionStatus  @default(trial)
+
+  currentPeriodStart DateTime?           @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd   DateTime?           @map("current_period_end") @db.Timestamptz
+  trialEnd           DateTime?           @map("trial_end") @db.Timestamptz
+  cancelAtPeriodEnd  Boolean             @default(false) @map("cancel_at_period_end")
+
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status], map: "idx_subscriptions_status")
+  @@index([revenuecatUserId])
+  @@map("subscriptions")
+}
+
+// =============================================================================
+// ─── MODELO: NOTIFICATION_LOGS ────────────────────────────────────────────────
+// =============================================================================
+
+/// Log de notificaciones push (FD-DB-10). Deep linking.
+/// Scheme: cali://training | cali://nutrition | cali://hydration
+///
+/// POLÍTICA DE ESCRITURA (FIX-08):
+///   INSERT: service_role (NotificationsService)
+///   UPDATE opened_at: service_role via POST /notifications/:id/open
+///   NUNCA el cliente hace UPDATE directo (previene manipulación de IDs ajenos)
+///
+/// RLS: SELECT → user_id = auth.uid()
+///      INSERT/UPDATE → service_role exclusivamente
+model NotificationLog {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  deepLink  String?          @map("deep_link") @db.VarChar(255)
+  sentAt    DateTime         @default(now()) @map("sent_at") @db.Timestamptz
+  openedAt  DateTime?        @map("opened_at") @db.Timestamptz
+  platform  String?          @db.VarChar(20) // 'ios' | 'android'
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, type, sentAt(sort: Desc)])
+  @@map("notification_logs")
+}
+
+// =============================================================================
+// ─── MODELO: SYNC_QUEUE_ITEMS ─────────────────────────────────────────────────
+// =============================================================================
+
+/// Cola offline (FD-DB-09). Bloqueante para MVP.
+///
+/// Arquitectura 2 niveles:
+///   1. Dispositivo (MMKV/SQLite): cola primaria sin conexión
+///   2. Esta tabla: idempotencia + auditoría en backend
+///      → POST /sync/offline-queue al recuperar conexión
+///      → Si id ya existe: 200 sin duplicar (idempotencia)
+///
+/// Operaciones offline: workout_sessions, workout_logs, food_diary, water_logs
+/// NO offline: búsqueda USDA, CALI, Apple Health, onboarding
+///
+/// RLS POLICY: USING (user_id = auth.uid())
+model SyncQueueItem {
+  /// UUID del CLIENTE — clave de idempotencia
+  id              String        @id @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+
+  operation       SyncOperation
+  endpoint        SyncEndpoint
+  payload         Json
+
+  status          SyncStatus    @default(pending)
+  retryCount      Int           @default(0) @map("retry_count")
+
+  clientCreatedAt DateTime      @map("client_created_at") @db.Timestamptz
+  syncedAt        DateTime?     @map("synced_at") @db.Timestamptz
+  errorMessage    String?       @map("error_message") @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, clientCreatedAt])
+  @@map("sync_queue_items")
+}
+
+// =============================================================================
+// ─── VISTA MATERIALIZADA: DAILY_SUMMARY_MV ────────────────────────────────────
+// =============================================================================
+//
+// FIX-02: RLS habilitado (02_rls_policies.sql) — policy "daily_summary_mv_own"
+// FIX-03: CTE activity_dates como base — incluye días solo-agua y solo-pasos
+// DDL completo: prisma/sql/01_materialized_views.sql
+// Refresh: BullMQ job cada 30 min (CONCURRENTLY)
+// Dashboard hoy → tablas fuente | Analítica histórica → esta MV
+
+/// Vista materializada. Solo lectura. RLS habilitado.
+view DailySummary {
+  userId           String   @map("user_id") @db.Uuid
+  date             DateTime @db.Date
+  caloriesConsumed Decimal  @map("calories_consumed") @db.Decimal(10, 2)
+  proteinConsumed  Decimal  @map("protein_consumed") @db.Decimal(10, 2)
+  carbsConsumed    Decimal  @map("carbs_consumed") @db.Decimal(10, 2)
+  fatConsumed      Decimal  @map("fat_consumed") @db.Decimal(10, 2)
+  waterConsumedMl  Int      @map("water_consumed_ml")
+  steps            Int
+
+  @@unique([userId, date])
+  @@map("daily_summary_mv")
+}
+```
+
+-----
+
+## Orden de Ejecución en Producción
+
+```bash
+# 1. Migración Prisma (crea tablas, enums, índices Prisma)
+prisma migrate deploy
+
+# 2. MV, índices parciales, UNIQUE PARTIAL, función get_user_profile()
+psql $DATABASE_URL -f prisma/sql/01_materialized_views.sql
+
+# 3. Políticas RLS (incluye MV — FIX-02)
+psql $DATABASE_URL -f prisma/sql/02_rls_policies.sql
+
+# 4. CHECK constraints (FIX-05)
+psql $DATABASE_URL -f prisma/sql/03_check_constraints.sql
+```
+
+-----
+
+*schema_v2.md · CALI-NUTRI AI · Arquitectura Principal · Junio 2026*

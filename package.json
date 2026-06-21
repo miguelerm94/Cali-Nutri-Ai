@@ -1,0 +1,28 @@
+{
+  "name": "cali-nutri-ai",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@9.1.0",
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "type-check": "turbo run type-check",
+    "db:migrate": "pnpm --filter @cali-nutri/database migrate",
+    "db:migrate:sql": "pnpm --filter @cali-nutri/database migrate:sql",
+    "db:generate": "pnpm --filter @cali-nutri/database generate",
+    "db:seed": "pnpm --filter @cali-nutri/database seed",
+    "api:dev": "pnpm --filter @cali-nutri/api dev",
+    "mobile:dev": "pnpm --filter @cali-nutri/mobile start"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.6",
+    "typescript": "^5.4.5",
+    "prettier": "^3.3.2",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0"
+  }
+}

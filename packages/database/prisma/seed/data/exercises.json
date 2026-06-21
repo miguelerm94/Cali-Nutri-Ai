@@ -1,0 +1,313 @@
+[
+  {
+    "name": "Flexiones inclinadas",
+    "name_es": "Flexiones inclinadas",
+    "category": "push",
+    "primary_muscle": "chest",
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "difficulty": 2,
+    "description": "Flexiones inclinadas — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Manos en superficie elevada (banco/mesa), cuerpo recto, baja el pecho hacia el borde y empuja.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "cb6b0512-1dd3-40b7-8757-f8ef7d0916cb"
+  },
+  {
+    "name": "Flexiones normales",
+    "name_es": "Flexiones normales",
+    "category": "push",
+    "primary_muscle": "chest",
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "core"
+    ],
+    "difficulty": 3,
+    "description": "Flexiones normales — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Manos a la anchura de hombros, cuerpo en línea recta, baja hasta casi tocar el suelo y empuja.",
+    "parent_exercise_id": "cb6b0512-1dd3-40b7-8757-f8ef7d0916cb",
+    "is_active": true,
+    "id": "971b8709-3eb0-4e76-916a-e8e2c2bb3d5c"
+  },
+  {
+    "name": "Flexiones declinadas",
+    "name_es": "Flexiones declinadas",
+    "category": "push",
+    "primary_muscle": "chest",
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "difficulty": 4,
+    "description": "Flexiones declinadas — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Pies elevados sobre superficie, manos en el suelo, mismo patrón que la flexión normal.",
+    "parent_exercise_id": "971b8709-3eb0-4e76-916a-e8e2c2bb3d5c",
+    "is_active": true,
+    "id": "68f4607d-efc3-49ac-b062-aeaef6c8194c"
+  },
+  {
+    "name": "Flexiones diamante",
+    "name_es": "Flexiones diamante",
+    "category": "push",
+    "primary_muscle": "triceps",
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ],
+    "difficulty": 5,
+    "description": "Flexiones diamante — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Manos juntas formando un diamante bajo el pecho. Mayor énfasis en tríceps.",
+    "parent_exercise_id": "68f4607d-efc3-49ac-b062-aeaef6c8194c",
+    "is_active": true,
+    "id": "58fb542a-36f0-4834-8e35-e4a71d4360d1"
+  },
+  {
+    "name": "Pike Push Ups",
+    "name_es": "Pike Push Ups",
+    "category": "push",
+    "primary_muscle": "shoulders",
+    "secondary_muscles": [
+      "triceps"
+    ],
+    "difficulty": 4,
+    "description": "Pike Push Ups — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Posición de V invertida (cadera elevada), baja la cabeza hacia el suelo y empuja.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "d6fc2cab-05aa-4cd4-8dc3-5bd9609be50c"
+  },
+  {
+    "name": "Elevated Pike Push Ups",
+    "name_es": "Elevated Pike Push Ups",
+    "category": "push",
+    "primary_muscle": "shoulders",
+    "secondary_muscles": [
+      "triceps"
+    ],
+    "difficulty": 6,
+    "description": "Elevated Pike Push Ups — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Igual que Pike Push Ups pero con los pies elevados — mayor rango y carga vertical.",
+    "parent_exercise_id": "d6fc2cab-05aa-4cd4-8dc3-5bd9609be50c",
+    "is_active": true,
+    "id": "0f363c72-9d70-4d66-a212-cf92a360de3f"
+  },
+  {
+    "name": "Dominadas negativas",
+    "name_es": "Dominadas negativas",
+    "category": "pull",
+    "primary_muscle": "back",
+    "secondary_muscles": [
+      "biceps",
+      "core"
+    ],
+    "difficulty": 2,
+    "description": "Dominadas negativas — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Sube con ayuda/salto hasta arriba de la barra y baja lo más lento posible (3-5s).",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "afda71ba-1b5e-42af-8bc0-11528e068bcc"
+  },
+  {
+    "name": "Chin Ups supinados",
+    "name_es": "Chin Ups supinados",
+    "category": "pull",
+    "primary_muscle": "back",
+    "secondary_muscles": [
+      "biceps",
+      "core"
+    ],
+    "difficulty": 4,
+    "description": "Chin Ups supinados — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Agarre supino (palmas hacia ti), tira hasta que el mentón supere la barra.",
+    "parent_exercise_id": "afda71ba-1b5e-42af-8bc0-11528e068bcc",
+    "is_active": true,
+    "id": "d31e4d97-b024-4484-b699-64d6481de934"
+  },
+  {
+    "name": "Dominadas pronadas",
+    "name_es": "Dominadas pronadas",
+    "category": "pull",
+    "primary_muscle": "back",
+    "secondary_muscles": [
+      "biceps",
+      "core"
+    ],
+    "difficulty": 5,
+    "description": "Dominadas pronadas — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Agarre prono a la anchura de hombros, retrae escápulas, tira hasta superar la barra con el mentón.",
+    "parent_exercise_id": "d31e4d97-b024-4484-b699-64d6481de934",
+    "is_active": true,
+    "id": "ea614dc1-d605-4bdd-9b83-c64563e48a93"
+  },
+  {
+    "name": "Remo en mesa (bodyweight row)",
+    "name_es": "Remo en mesa (bodyweight row)",
+    "category": "pull",
+    "primary_muscle": "back",
+    "secondary_muscles": [
+      "biceps",
+      "shoulders"
+    ],
+    "difficulty": 2,
+    "description": "Remo en mesa (bodyweight row) — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Cuerpo bajo una mesa/barra baja, agarra el borde y tira el pecho hacia arriba manteniendo el cuerpo recto.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "9ccb7279-2d34-4e64-b8c2-9bd54712e332"
+  },
+  {
+    "name": "Sentadilla",
+    "name_es": "Sentadilla",
+    "category": "squat",
+    "primary_muscle": "quads",
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "difficulty": 2,
+    "description": "Sentadilla — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Pies a la anchura de hombros, baja la cadera hasta paralelo o más, mantén el pecho erguido.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "b661e977-aeb6-455f-86a3-ee7a2313c017"
+  },
+  {
+    "name": "Zancada",
+    "name_es": "Zancada",
+    "category": "squat",
+    "primary_muscle": "quads",
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "difficulty": 3,
+    "description": "Zancada — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Da un paso largo hacia adelante, baja la rodilla trasera casi al suelo, vuelve a la posición inicial.",
+    "parent_exercise_id": "b661e977-aeb6-455f-86a3-ee7a2313c017",
+    "is_active": true,
+    "id": "e1daa6c6-e27b-4a8a-8210-b5aa4f903011"
+  },
+  {
+    "name": "Sentadilla búlgara",
+    "name_es": "Sentadilla búlgara",
+    "category": "squat",
+    "primary_muscle": "quads",
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "difficulty": 5,
+    "description": "Sentadilla búlgara — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Pie trasero elevado sobre una superficie, baja en sentadilla unilateral con la pierna delantera.",
+    "parent_exercise_id": "e1daa6c6-e27b-4a8a-8210-b5aa4f903011",
+    "is_active": true,
+    "id": "a47cdc88-e0cc-408a-aba3-5639ae1e2321"
+  },
+  {
+    "name": "Hip Thrust",
+    "name_es": "Hip Thrust",
+    "category": "hinge",
+    "primary_muscle": "glutes",
+    "secondary_muscles": [
+      "hamstrings"
+    ],
+    "difficulty": 3,
+    "description": "Hip Thrust — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Espalda alta apoyada en banco, empuja la cadera hacia arriba contrayendo el glúteo en el tope.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "e3dc7c67-4273-49a4-809b-5c982ce3093a"
+  },
+  {
+    "name": "Puente de glúteos",
+    "name_es": "Puente de glúteos",
+    "category": "hinge",
+    "primary_muscle": "glutes",
+    "secondary_muscles": [
+      "hamstrings",
+      "core"
+    ],
+    "difficulty": 2,
+    "description": "Puente de glúteos — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Acostado, pies apoyados, eleva la cadera contrayendo el glúteo, mantén 1-2s en el tope.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "0d538c9d-fe8c-4ffb-ba93-ecfad7685775"
+  },
+  {
+    "name": "Extensión de espalda en suelo",
+    "name_es": "Extensión de espalda en suelo",
+    "category": "hinge",
+    "primary_muscle": "back",
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "difficulty": 2,
+    "description": "Extensión de espalda en suelo — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Boca abajo, eleva pecho y piernas simultáneamente contrayendo la zona lumbar y glúteos.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "bebc2e4b-6023-422f-bab0-e6ab1d4c890f"
+  },
+  {
+    "name": "Plancha",
+    "name_es": "Plancha",
+    "category": "core",
+    "primary_muscle": "core",
+    "secondary_muscles": [
+      "shoulders"
+    ],
+    "difficulty": 2,
+    "description": "Plancha — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Antebrazos en el suelo, cuerpo recto de cabeza a talones, contrae abdomen y glúteos.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "d0a71792-d3fb-4933-b120-5056d1f3bdaf"
+  },
+  {
+    "name": "Plancha lateral",
+    "name_es": "Plancha lateral",
+    "category": "core",
+    "primary_muscle": "core",
+    "secondary_muscles": [
+      "shoulders"
+    ],
+    "difficulty": 3,
+    "description": "Plancha lateral — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Apoyo en un antebrazo, cuerpo en línea recta lateral, cadera elevada sin caer.",
+    "parent_exercise_id": null,
+    "is_active": true,
+    "id": "0f95c8b5-f1e1-4c85-8580-9a8d99d197a2"
+  },
+  {
+    "name": "Hollow Body Hold",
+    "name_es": "Hollow Body Hold",
+    "category": "core",
+    "primary_muscle": "core",
+    "secondary_muscles": [],
+    "difficulty": 4,
+    "description": "Hollow Body Hold — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Acostado boca arriba, eleva piernas y hombros del suelo formando una 'C', lumbar pegada al piso.",
+    "parent_exercise_id": "d0a71792-d3fb-4933-b120-5056d1f3bdaf",
+    "is_active": true,
+    "id": "cad172e8-9aef-4f54-992f-8a7cd935189f"
+  },
+  {
+    "name": "Elevaciones de piernas",
+    "name_es": "Elevaciones de piernas",
+    "category": "core",
+    "primary_muscle": "core",
+    "secondary_muscles": [
+      "core"
+    ],
+    "difficulty": 5,
+    "description": "Elevaciones de piernas — ejercicio de calistenia sin equipo (Training_Engine.md).",
+    "instructions": "Acostado boca arriba, piernas rectas, eleva hasta 90° controlando la zona lumbar.",
+    "parent_exercise_id": "cad172e8-9aef-4f54-992f-8a7cd935189f",
+    "is_active": true,
+    "id": "4c8f9862-1309-4da5-84fd-c5c12876c3d2"
+  }
+]

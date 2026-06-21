@@ -1,0 +1,39 @@
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ErrorCode } from '@cali-nutri/shared-types';
+
+/**
+ * Guard GLOBAL aplicado en AppModule (BackendArchitecture.md §8).
+ * Verifica JWT RS256 propio (NO el de Supabase — ver FD-ARCH-01 y jwt.strategy.ts).
+ * Rutas marcadas con @Public() lo omiten.
+ */
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  constructor(private readonly reflector: Reflector) {
+    super();
+  }
+
+  canActivate(context: ExecutionContext) {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+    return super.canActivate(context);
+  }
+
+  handleRequest(err: unknown, user: unknown) {
+    if (err || !user) {
+      const code = err instanceof Error && err.name === 'TokenExpiredError'
+        ? ErrorCode.TOKEN_EXPIRED
+        : ErrorCode.INVALID_TOKEN;
+      throw new UnauthorizedException({
+        code,
+        message: 'Token inválido o expirado. Usa /auth/refresh para renovarlo.',
+      });
+    }
+    return user;
+  }
+}

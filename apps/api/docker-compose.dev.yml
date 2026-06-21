@@ -1,0 +1,31 @@
+# PostgreSQL + Redis locales para desarrollo (BackendArchitecture.md §2).
+# Producción usa Supabase (Postgres gestionado) + Upstash Redis — ver FinalDecisions.md.
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: calinutri
+      POSTGRES_PASSWORD: calinutri_dev
+      POSTGRES_DB: calinutri
+    ports:
+      - '5432:5432'
+    volumes:
+      - cali_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U calinutri']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cali_postgres_data:
