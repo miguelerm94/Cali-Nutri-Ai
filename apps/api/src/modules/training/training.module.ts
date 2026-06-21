@@ -48,6 +48,6 @@ import { TrainingController } from './training.controller';
     GetStagnationStatusUseCase,
     TrainingService,
   ],
-  exports: [RoutineGeneratorEngine, ExercisesRepository, TrainingProgramsRepository],
+  exports: [RoutineGeneratorEngine, ExercisesRepository, TrainingProgramsRepository, WorkoutSessionsRepository, GetTodayUseCase],
 })
 export class TrainingModule {}
