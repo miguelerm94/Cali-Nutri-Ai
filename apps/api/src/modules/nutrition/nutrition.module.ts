@@ -46,6 +46,6 @@ import { NutritionController } from './nutrition.controller';
     DeleteFoodEntryUseCase,
     NutritionService,
   ],
-  exports: [TdeeCalculatorEngine, MacroCalculatorEngine],
+  exports: [TdeeCalculatorEngine, MacroCalculatorEngine, NutritionService],
 })
 export class NutritionModule {}

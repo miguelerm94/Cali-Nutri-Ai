@@ -25,6 +25,8 @@ import { SyncModule } from './modules/sync/sync.module';
 import { AssessmentModule } from './modules/assessment/assessment.module';
 import { TrainingModule } from './modules/training/training.module';
 import { NutritionModule } from './modules/nutrition/nutrition.module';
+import { HydrationModule } from './modules/hydration/hydration.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -45,8 +47,8 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
  *   TimeoutInterceptor (10s default) · HttpExceptionFilter · RequestContextMiddleware primero.
  *
  * Módulos de dominio: Auth, Sync (S1) + Assessment (S2) + Training completo (S3) +
- * Nutrition completo (S4). El resto (Users, Hydration, Body, Dashboard, AI, HealthSync,
- * Notifications, Subscriptions, Analytics) se añaden en S5-S6b según FD-INFRA-01.
+ * Nutrition completo (S4) + Hidratación/Dashboard (S5a). El resto (Users, Body, AI,
+ * HealthSync, Notifications, Subscriptions, Analytics) se añaden en S5b-S6b según FD-INFRA-01.
  */
 @Module({
   imports: [
@@ -75,6 +77,8 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
     AssessmentModule,
     TrainingModule,
     NutritionModule,
+    HydrationModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
