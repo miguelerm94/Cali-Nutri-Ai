@@ -31,6 +31,7 @@ import { HydrationModule } from './modules/hydration/hydration.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { HealthSyncModule } from './modules/health-sync/health-sync.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -88,6 +89,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
     DashboardModule,
     AiModule,
     SubscriptionsModule,
+    HealthSyncModule,
   ],
   controllers: [AppController],
   providers: [

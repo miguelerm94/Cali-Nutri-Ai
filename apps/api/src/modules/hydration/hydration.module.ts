@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TrainingModule } from '../training/training.module';
+import { HealthSyncModule } from '../health-sync/health-sync.module';
 import { HydrationTargetEngine } from './engines/hydration-target.engine';
 import { WaterLogsRepository } from './repositories/water-logs.repository';
 import { BodyWeightRepository } from './repositories/body-weight.repository';
@@ -16,8 +17,8 @@ import { HydrationController } from './hydration.controller';
  * por clima — diferido a v2.0/WeatherKit), registro rápido, historial con racha.
  *
  * Fuera de alcance (documentado, no es un olvido):
- *   - Ajuste por pasos: requiere HealthSyncModule (S6a) para `steps_today`;
- *     el engine acepta el parámetro pero queda en 0 hasta entonces.
+ *   - Ajuste por pasos: ya integrado vía HealthSyncModule (S6a) — `steps_today`
+ *     viene de `health_data`, queda undefined (ajuste 0) hasta el primer sync.
  *   - PATCH /hydration/target (override manual de API.md): no hay campo en el
  *     schema para persistirlo (FD-DB-02 eliminó WATER_TARGETS) y FD-07 no lo
  *     exige como parte de la fórmula canónica. Diferido a v1.1.
@@ -27,7 +28,7 @@ import { HydrationController } from './hydration.controller';
  *     BodyMeasurement pertenece a BodyModule (no construido aún).
  */
 @Module({
-  imports: [TrainingModule],
+  imports: [TrainingModule, HealthSyncModule],
   controllers: [HydrationController],
   providers: [
     HydrationTargetEngine,
