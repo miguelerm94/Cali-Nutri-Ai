@@ -113,8 +113,20 @@ export class ToolExecutorService {
   }
 
   private async calculateMeal(input: { items: { food_name: string; quantity_g: number }[] }) {
-    const results = await Promise.all(
-      input.items.map(async (item) => {
+    type MealItemResult =
+      | { food_name: string; found: false }
+      | {
+          food_name: string;
+          found: true;
+          quantity_g: number;
+          calories_kcal: number;
+          protein_g: number;
+          carbs_g: number;
+          fat_g: number;
+        };
+
+    const results: MealItemResult[] = await Promise.all(
+      input.items.map(async (item): Promise<MealItemResult> => {
         const matches = await this.nutritionService.searchFoods(item.food_name, 1);
         const food = matches[0];
         if (!food) return { food_name: item.food_name, found: false };
@@ -130,15 +142,14 @@ export class ToolExecutorService {
         };
       }),
     );
-    const totals = results.reduce(
-      (acc, r) => ({
-        calories_kcal: acc.calories_kcal + ('calories_kcal' in r ? r.calories_kcal : 0),
-        protein_g: acc.protein_g + ('protein_g' in r ? r.protein_g : 0),
-        carbs_g: acc.carbs_g + ('carbs_g' in r ? r.carbs_g : 0),
-        fat_g: acc.fat_g + ('fat_g' in r ? r.fat_g : 0),
-      }),
-      { calories_kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-    );
+    const totals = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+    for (const r of results) {
+      if (!r.found) continue;
+      totals.calories_kcal += r.calories_kcal;
+      totals.protein_g += r.protein_g;
+      totals.carbs_g += r.carbs_g;
+      totals.fat_g += r.fat_g;
+    }
     return { items: results, totals };
   }
 
