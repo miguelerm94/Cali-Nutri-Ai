@@ -11,6 +11,8 @@ import anthropicConfig from './config/anthropic.config';
 import supabaseConfig from './config/supabase.config';
 import encryptionConfig from './config/encryption.config';
 import usdaConfig from './config/usda.config';
+import revenuecatConfig from './config/revenuecat.config';
+import notificationsConfig from './config/notifications.config';
 import { validateEnv } from './config/config.validation';
 
 import { PrismaModule } from './infrastructure/database/prisma.module';
@@ -28,6 +30,7 @@ import { NutritionModule } from './modules/nutrition/nutrition.module';
 import { HydrationModule } from './modules/hydration/hydration.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -48,9 +51,9 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
  *   TimeoutInterceptor (10s default) · HttpExceptionFilter · RequestContextMiddleware primero.
  *
  * Módulos de dominio: Auth, Sync (S1) + Assessment (S2) + Training completo (S3) +
- * Nutrition completo (S4) + Hidratación/Dashboard (S5a) + AI/CALI (S5b). El resto
- * (Users, Body, HealthSync, Notifications, Subscriptions, Analytics) se añaden en
- * S6a-S6b según FD-INFRA-01.
+ * Nutrition completo (S4) + Hidratación/Dashboard (S5a) + AI/CALI (S5b) +
+ * Subscriptions/RevenueCat (S6a). El resto (Users, Body, HealthSync,
+ * Notifications, Analytics) se añaden en S6a-S6b según FD-INFRA-01.
  */
 @Module({
   imports: [
@@ -66,6 +69,8 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
         supabaseConfig,
         encryptionConfig,
         usdaConfig,
+        revenuecatConfig,
+        notificationsConfig,
       ],
       validate: validateEnv,
     }),
@@ -82,6 +87,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
     HydrationModule,
     DashboardModule,
     AiModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -332,6 +332,7 @@ model User {
   subscription       Subscription?
   notificationLogs   NotificationLog[]
   syncQueueItems     SyncQueueItem[]
+  deviceTokens       DeviceToken[]
 
   @@index([email])
   @@index([googleId])
@@ -982,6 +983,34 @@ model SyncQueueItem {
   @@index([userId, status])
   @@index([userId, clientCreatedAt])
   @@map("sync_queue_items")
+}
+
+// =============================================================================
+// ─── MODELO: DEVICE_TOKENS ────────────────────────────────────────────────────
+// =============================================================================
+
+/// Tokens de push notification por dispositivo (Expo push token: APNs/FCM detrás).
+/// S6a — añadido junto con NotificationsModule; API.md describe
+/// POST/DELETE /notifications/device-token pero el schema original no tenía
+/// dónde persistirlos. 1 fila por (userId, deviceId) — un usuario puede tener
+/// varios dispositivos activos (FD-DB-10 no lo prohíbe).
+///
+/// RLS POLICY: USING (user_id = auth.uid())
+model DeviceToken {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  token       String    @db.VarChar(255)
+  platform    String    @db.VarChar(20) // 'ios' | 'android'
+  deviceId    String    @map("device_id") @db.VarChar(255)
+  appVersion  String?   @map("app_version") @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@map("device_tokens")
 }
 
 // =============================================================================

@@ -33,6 +33,7 @@ export const envSchema = z.object({
   USDA_API_KEY: z.string().optional(), // Requerido a partir de S4
   REVENUECAT_API_KEY: z.string().optional(), // Requerido a partir de S6a
   REVENUECAT_WEBHOOK_SECRET: z.string().optional(),
+  EXPO_ACCESS_TOKEN: z.string().optional(), // Push notifications (S6a) — opcional (modo enhanced security)
 
   SENTRY_DSN: z.string().optional(),
 });
