@@ -10,6 +10,7 @@ import awsConfig from './config/aws.config';
 import anthropicConfig from './config/anthropic.config';
 import supabaseConfig from './config/supabase.config';
 import encryptionConfig from './config/encryption.config';
+import usdaConfig from './config/usda.config';
 import { validateEnv } from './config/config.validation';
 
 import { PrismaModule } from './infrastructure/database/prisma.module';
@@ -23,6 +24,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { AssessmentModule } from './modules/assessment/assessment.module';
 import { TrainingModule } from './modules/training/training.module';
+import { NutritionModule } from './modules/nutrition/nutrition.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -42,9 +44,9 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
  *   JwtAuthGuard global · TransformInterceptor · LoggingInterceptor ·
  *   TimeoutInterceptor (10s default) · HttpExceptionFilter · RequestContextMiddleware primero.
  *
- * Módulos de dominio: Auth, Sync (S1) + Assessment (S2) + Training completo (S3).
- * El resto (Users, Nutrition, Hydration, Body, Dashboard, AI, HealthSync,
- * Notifications, Subscriptions, Analytics) se añaden en S4-S6b según FD-INFRA-01.
+ * Módulos de dominio: Auth, Sync (S1) + Assessment (S2) + Training completo (S3) +
+ * Nutrition completo (S4). El resto (Users, Hydration, Body, Dashboard, AI, HealthSync,
+ * Notifications, Subscriptions, Analytics) se añaden en S5-S6b según FD-INFRA-01.
  */
 @Module({
   imports: [
@@ -59,6 +61,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
         anthropicConfig,
         supabaseConfig,
         encryptionConfig,
+        usdaConfig,
       ],
       validate: validateEnv,
     }),
@@ -71,6 +74,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
     SyncModule,
     AssessmentModule,
     TrainingModule,
+    NutritionModule,
   ],
   controllers: [AppController],
   providers: [

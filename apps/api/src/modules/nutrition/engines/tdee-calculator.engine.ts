@@ -3,9 +3,8 @@ import { Sex } from '@prisma/client';
 
 /**
  * Motor TMB/TDEE — FD-05 (FinalDecisions.md Sección 2, fórmula única autorizada).
- * NOTA DE UBICACIÓN: vive temporalmente en assessment/engines/ porque es necesario
- * desde el onboarding (S2). Se "promueve" a modules/nutrition/engines/ en S4 sin
- * cambiar su interfaz pública (BackendArchitecture.md ubica NutritionModule ahí).
+ * Promovido desde assessment/engines/ en S4 (NutritionModule), sin cambiar su
+ * interfaz pública — AssessmentModule lo sigue usando vía import de NutritionModule.
  */
 @Injectable()
 export class TdeeCalculatorEngine {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { GoalType } from '@prisma/client';
-import { MacroTargets } from '../engines/macro-calculator.engine';
+import { MacroTargets } from '../../nutrition/engines/macro-calculator.engine';
 
 /**
  * NOTA DE UBICACIÓN: BackendArchitecture.md ubica goals.repository.ts en

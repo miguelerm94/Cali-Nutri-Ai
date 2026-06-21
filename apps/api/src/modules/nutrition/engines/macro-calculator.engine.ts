@@ -11,8 +11,8 @@ export interface MacroTargets {
 
 /**
  * Motor de distribución de macros — FD-06 (FinalDecisions.md Sección 2).
- * Misma nota de ubicación temporal que TdeeCalculatorEngine (se promueve a
- * NutritionModule en S4).
+ * Promovido desde assessment/engines/ en S4 (NutritionModule), sin cambiar su
+ * interfaz pública.
  */
 @Injectable()
 export class MacroCalculatorEngine {
