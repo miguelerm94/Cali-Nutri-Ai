@@ -28,7 +28,7 @@ export class WorkoutSessionsRepository {
       where: { id },
       include: {
         workoutLogs: { include: { exercise: true }, orderBy: { createdAt: 'asc' } },
-        workoutDay: { include: { workoutExercises: true } },
+        workoutDay: { include: { workoutExercises: { include: { exercise: true } } } },
       },
     });
   }
