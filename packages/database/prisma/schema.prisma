@@ -29,11 +29,8 @@ datasource db {
   url        = env("DATABASE_URL")
   // directUrl usado por Prisma Migrate (sin connection pooling — requerido por Supabase)
   directUrl  = env("DIRECT_URL")
-  extensions = [
-    pgcrypto(schema: "extensions"),  // gen_random_uuid()
-    pg_trgm(schema: "extensions"),   // Búsqueda fuzzy de alimentos (GIN trigram)
-    unaccent(schema: "extensions")   // Búsqueda sin acentos (español)
-  ]
+  // gen_random_uuid() · pg_trgm: búsqueda fuzzy (GIN trigram) · unaccent: búsqueda sin acentos
+  extensions = [pgcrypto(schema: "extensions"), pg_trgm(schema: "extensions"), unaccent(schema: "extensions")]
 }
 
 // =============================================================================
