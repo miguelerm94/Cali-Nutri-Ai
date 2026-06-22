@@ -3,13 +3,13 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
-import { HomeScreen } from '../screens/HomeScreen';
+import { MainTabNavigator } from './MainTabNavigator';
 import { OnboardingNavigator } from './OnboardingNavigator';
 import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/tokens';
 
 export type AuthStackParamList = { Login: undefined; Register: undefined };
-export type RootStackParamList = { Home: undefined };
+export type RootStackParamList = { Main: undefined };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -31,7 +31,7 @@ function AuthNavigator() {
 function MainNavigator() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="Home" component={HomeScreen} />
+      <RootStack.Screen name="Main" component={MainTabNavigator} />
     </RootStack.Navigator>
   );
 }
