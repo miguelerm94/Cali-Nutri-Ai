@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
-    "start": "node dist/main.js",
+    "dev": "nest start --watch --exec \"node -r ts-node/register/transpile-only\"",
+    "start": "node -r ts-node/register/transpile-only dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",

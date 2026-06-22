@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
-import { PresentationLevel, Sex, UnitPreference } from '@prisma/client';
+import { Sex, UnitPreference } from '@prisma/client';
 import { MovementScores } from '../engines/assessment-scoring.engine';
 
 @Injectable()

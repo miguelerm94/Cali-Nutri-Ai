@@ -24,7 +24,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: unknown, user: unknown) {
+  handleRequest<TUser = unknown>(err: unknown, user: unknown): TUser {
     if (err || !user) {
       const code = err instanceof Error && err.name === 'TokenExpiredError'
         ? ErrorCode.TOKEN_EXPIRED
@@ -34,6 +34,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         message: 'Token inválido o expirado. Usa /auth/refresh para renovarlo.',
       });
     }
-    return user;
+    return user as TUser;
   }
 }
