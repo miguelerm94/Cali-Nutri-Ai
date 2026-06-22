@@ -53,7 +53,12 @@ ALTER TABLE sync_queue_items   ENABLE ROW LEVEL SECURITY;
 -- Sin esto, un usuario autenticado puede leer datos de TODOS los usuarios
 -- directamente via REST API o Supabase client.
 
-ALTER MATERIALIZED VIEW daily_summary_mv ENABLE ROW LEVEL SECURITY;
+-- PostgreSQL no soporta RLS en vistas materializadas (ALTER MATERIALIZED VIEW
+-- ... ENABLE ROW LEVEL SECURITY no existe como operación válida, a diferencia
+-- de las tablas). El bloqueo de acceso directo por roles PostgREST (anon/
+-- authenticated) se logra revocando privilegios en la MV: el acceso legítimo
+-- pasa siempre por NestJS (service_role, bypassa RLS por diseño).
+REVOKE ALL ON daily_summary_mv FROM anon, authenticated;
 
 -- =============================================================================
 -- ── PASO 3: POLÍTICAS POR TABLA ───────────────────────────────────────────────
@@ -308,15 +313,10 @@ CREATE POLICY "sync_queue_items_own"
 -- Las MV NO heredan RLS de tablas fuente — policy debe declararse explícitamente.
 -- =============================================================================
 
-CREATE POLICY "daily_summary_mv_own"
-  ON daily_summary_mv FOR SELECT
-  USING (user_id = auth.uid());
-
 COMMENT ON MATERIALIZED VIEW daily_summary_mv IS
-  'FD-DB-03 v2.0 · FIX-02: RLS habilitado. '
-  'Las MV no heredan RLS de tablas fuente — policy declarada explícitamente. '
-  'SELECT restringido al propietario via auth.uid(). '
-  'Backend NestJS accede via service_role (bypass RLS). '
+  'FD-DB-03 v2.0 · FIX-02: RLS no es soportado por Postgres en MVs. '
+  'Acceso directo de anon/authenticated revocado (REVOKE ALL). '
+  'Backend NestJS accede via service_role/owner (no sujeto a estos REVOKE). '
   'Protección contra acceso REST API directo por rol authenticated.';
 
 -- =============================================================================

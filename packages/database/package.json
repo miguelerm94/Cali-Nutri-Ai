@@ -10,7 +10,7 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:sql": "node scripts/run-sql-migrations.js",
     "migrate:all": "pnpm migrate && pnpm migrate:sql && pnpm generate",
-    "seed": "ts-node prisma/seed/seed.ts",
+    "seed": "ts-node --compiler-options {\"module\":\"commonjs\"} prisma/seed/seed.ts",
     "studio": "prisma studio"
   },
   "dependencies": {

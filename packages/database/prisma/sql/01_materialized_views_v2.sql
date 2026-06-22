@@ -36,6 +36,18 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm   SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS unaccent  SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto  SCHEMA extensions;
 
+-- extensions.unaccent() es STABLE, no IMMUTABLE, y por eso Postgres rechaza
+-- su uso directo en una expresión de índice. Wrapper IMMUTABLE requerido.
+CREATE OR REPLACE FUNCTION extensions.f_unaccent(text)
+  RETURNS text
+  LANGUAGE sql
+  IMMUTABLE
+  PARALLEL SAFE
+  STRICT
+AS $$
+  SELECT extensions.unaccent('extensions.unaccent'::regdictionary, $1)
+$$;
+
 -- =============================================================================
 -- VISTA MATERIALIZADA: daily_summary_mv
 -- FD-DB-03: Refresh cada 30 min via BullMQ (CONCURRENTLY — no bloquea lecturas)
@@ -203,7 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_foods_name_es_trgm
 -- Full-text search en español (fallback para búsqueda semántica básica)
 CREATE INDEX IF NOT EXISTS idx_foods_name_fts_es
   ON foods USING GIN (
-    to_tsvector('spanish', extensions.unaccent(name))
+    to_tsvector('spanish', extensions.f_unaccent(name))
   );
 
 -- =============================================================================
