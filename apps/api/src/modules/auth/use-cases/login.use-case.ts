@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthRepository } from '../repositories/auth.repository';
 import { SupabaseService, InvalidCredentialsError } from '../../../infrastructure/supabase/supabase.service';
+import { DevAuthService } from '../dev-auth.service';
 import { LoginDto } from '../dto/login.dto';
 import { AppEvent } from '../../../infrastructure/events/events.enum';
 import { AuthResponseDto, ErrorCode } from '@cali-nutri/shared-types';
@@ -12,9 +13,15 @@ export class LoginUseCase {
     private readonly authRepository: AuthRepository,
     private readonly supabaseService: SupabaseService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly devAuth: DevAuthService,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthResponseDto> {
+    // Seam de desarrollo (DEV_AUTH_ENABLED): evita Supabase. Inerte en prod.
+    if (this.devAuth.enabled) {
+      return this.devAuth.login(dto);
+    }
+
     let session;
     try {
       // Supabase valida las credenciales (timing-safe internamente) y emite el JWT — FD-ARCH-01.

@@ -36,6 +36,10 @@ export const envSchema = z.object({
   EXPO_ACCESS_TOKEN: z.string().optional(), // Push notifications (S6a) — opcional (modo enhanced security)
 
   SENTRY_DSN: z.string().optional(),
+
+  // SEAM DE AUTH LOCAL — SOLO DESARROLLO. Default off. Ver config/dev-auth.config.ts.
+  DEV_AUTH_ENABLED: z.enum(['true', 'false']).optional(),
+  DEV_AUTH_SECRET: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

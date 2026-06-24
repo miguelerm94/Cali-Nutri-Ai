@@ -3,6 +3,8 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { DevJwtStrategy } from './strategies/dev-jwt.strategy';
+import { DevAuthService } from './dev-auth.service';
 import { AuthRepository } from './repositories/auth.repository';
 import { RegisterUseCase } from './use-cases/register.use-case';
 import { LoginUseCase } from './use-cases/login.use-case';
@@ -23,6 +25,9 @@ import { OAuthLoginUseCase } from './use-cases/oauth-login.use-case';
     AuthService,
     AuthRepository,
     JwtStrategy,
+    // Seam de auth local — solo opera con DEV_AUTH_ENABLED=true (inerte en prod).
+    DevAuthService,
+    DevJwtStrategy,
     RegisterUseCase,
     LoginUseCase,
     RefreshTokenUseCase,

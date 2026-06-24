@@ -13,6 +13,7 @@ import encryptionConfig from './config/encryption.config';
 import usdaConfig from './config/usda.config';
 import revenuecatConfig from './config/revenuecat.config';
 import notificationsConfig from './config/notifications.config';
+import devAuthConfig from './config/dev-auth.config';
 import { validateEnv } from './config/config.validation';
 
 import { PrismaModule } from './infrastructure/database/prisma.module';
@@ -73,6 +74,7 @@ import { SecurityMiddleware } from './common/middlewares/security.middleware';
         usdaConfig,
         revenuecatConfig,
         notificationsConfig,
+        devAuthConfig,
       ],
       validate: validateEnv,
     }),
